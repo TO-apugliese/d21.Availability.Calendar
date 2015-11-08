@@ -1,0 +1,62 @@
+﻿@import url(https://fonts.googleapis.com/css?family=Roboto+Condensed:400,400italic,700,300);
+
+#d21-calendar {
+    font-family: 'Roboto Condensed', sans-serif;
+    color: #666;
+    width: 782px;
+}
+
+.d21-calendar-day {
+    background-color: #fff;
+    border-bottom: 8px solid darkgray;
+    cursor: auto;
+    min-height: 90px;
+}
+
+    .d21-calendar-day .d21-dayNumer {
+        font-size: 1.2em;
+        font-weight: 400;
+        height: 20px;
+    }
+
+    .d21-calendar-day .d21-monthYear {
+        font-size: 0.7em;
+        font-weight: 300;
+        padding-bottom: 8px;
+    }
+
+    .d21-calendar-day.notAvail {
+        border-bottom: 8px solid #ff6666;
+    }
+
+    .d21-calendar-day.avail {
+        border-bottom: 8px solid #7BBF6A;
+        cursor: pointer;
+    }
+
+.d21-calendar-head, .d21-calendar-day {
+    box-sizing: border-box;
+    float: left;
+    margin: 0 1% 1% 0;
+    padding: 8px;
+    width: 13%;
+}
+
+.d21-calendar-head {
+    background-color: #808080;
+    color: #fff;
+}
+
+#d21-controlls-top,
+#d21-controlls-bottom {
+    clear: both;
+    padding: 10px 40px;
+    cursor: pointer;
+    width: 782px;
+}
+
+.prevWeek,
+.nextWeek {
+    position: absolute;
+    right: 50px;
+}
