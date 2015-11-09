@@ -23,31 +23,33 @@ function d21_aCalendar(options) {
                     short: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'],
                     long: ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag']
                 },
-                months: ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Julie', 'August', 'September', 'Oktober', 'November', 'Dezember']
+                months: ['Januar', 'Februar', 'M&auml;rz', 'April', 'Mai', 'Juni', 'Julie', 'August', 'September', 'Oktober', 'November', 'Dezember']
             }
         },
+        los: 1,
         DateArray: [],
         DateNow: new Date(),
-        FirstDay: 1
+        FirstDay: 1,
+        adultCount: 2,
+        childs: []
     }
 
     self.api = new d21_API(self);
 
     self.fn = {
         init: function () {
-            var avail = [];
-            var notAvail = [];
-
             moment.locale('de');
             self.fn.createDateArray(false);
+            self.fn.refreshAvailability().done(function (response) {
+                var avail = [];
+                var notAvail = [];
 
-            self.api.fn.get().done(function (response) {
                 $.each(response.Value.Properties[0].Days, function () {
                     if (this.IsAvailable) {
-                        avail.push(new Date(this.Date));
+                        avail.push(this);
                     }
                     else {
-                        notAvail.push(new Date(this.Date));
+                        notAvail.push(this);
                     }
                 });
 
@@ -65,6 +67,35 @@ function d21_aCalendar(options) {
                 });
             });
         },
+        refreshAvailability: function () {
+            return self.api.fn.get(self.var.DateArray[0]);
+        },
+        refreshCalendar: function (los, startDate, adults, childs) {
+            self.var.DateNow = moment(startDate);
+            self.var.los = los;
+            self.var.adultCount = adults;
+            self.var.childs = childs;
+
+            self.fn.createDateArray(false);
+            self.fn.refreshAvailability().done(function (response) {
+                var avail = [];
+                var notAvail = [];
+
+                $.each(response.Value.Properties[0].Days, function () {
+                    if (this.IsAvailable) {
+                        avail.push(this);
+                    }
+                    else {
+                        notAvail.push(this);
+                    }
+                });
+
+                self.options.avail = avail;
+                self.options.notAvail = notAvail;
+
+                self.fn.render.days();
+            });
+        },
         render: {
             calendar: function () {
                 // Set output container
@@ -74,7 +105,7 @@ function d21_aCalendar(options) {
                 $('#d21-calendar').append('<div id="d21-controlls-bottom">');
 
                 // Add controlls
-                $('#d21-controlls-top').append('<div class="prevWeek">Eine Woche zurück</div>');
+                $('#d21-controlls-top').append('<div class="prevWeek">Eine Woche zur&uuml;ck</div>');
                 $('#d21-controlls-bottom').append('<div class="nextWeek">Eine Woche weiter</div>');
 
                 // Render header
@@ -97,10 +128,11 @@ function d21_aCalendar(options) {
                 for (var i = 0; i < 21; i++) {
                     var stateClass = "";
                     var btBook = "";
+                    var priceText = "";
 
                     if (self.options.notAvail.length > 0) {
                         $.each(self.options.notAvail, function () {
-                            var currentDate = moment(this);
+                            var currentDate = moment(this.Date);
                             currentDate.millisecond(0);
                             currentDate.second(0);
                             currentDate.minute(0);
@@ -108,13 +140,14 @@ function d21_aCalendar(options) {
 
                             if ((currentDate - self.var.DateArray[i]) == 0) {
                                 stateClass = " notAvail";
+                                priceText = "nicht verf&uuml;gbar";
                             }
                         });
                     }
 
                     if (self.options.avail.length > 0) {
                         $.each(self.options.avail, function () {
-                            var currentDate = moment(this);
+                            var currentDate = moment(this.Date);
                             currentDate.millisecond(0);
                             currentDate.second(0);
                             currentDate.minute(0);
@@ -123,6 +156,7 @@ function d21_aCalendar(options) {
                             if ((currentDate - self.var.DateArray[i]) == 0) {
                                 stateClass = " avail";
                                 btBook = "Buchen!";
+                                priceText = 'ab ' + this.PriceMin + ' €';
                             }
                         });
                     }
@@ -131,6 +165,7 @@ function d21_aCalendar(options) {
                     newItem += '<div class="d21-dayNumer">' + self.var.DateArray[i].get('date') + '</div>';
                     newItem += '<div class="d21-monthYear">' + self.var.Texts[self.options.lang].months[self.var.DateArray[i].get('month')].substring(0, 3) + ' ' + self.var.DateArray[i].get('year') + '</div>';
                     newItem += '<div class="d21-bookButton">' + btBook + '</div>';
+                    newItem += '<div class="d21-minPrice">' + priceText + '</div>';
                     newItem += '</div>';
 
                     result += newItem;
@@ -144,11 +179,45 @@ function d21_aCalendar(options) {
         handler: {
             nextWeek: function () {
                 self.fn.createDateArray(true, 1);
-                self.fn.render.days();
+                self.fn.refreshAvailability().done(function (response) {
+                    var avail = [];
+                    var notAvail = [];
+
+                    $.each(response.Value.Properties[0].Days, function () {
+                        if (this.IsAvailable) {
+                            avail.push(this);
+                        }
+                        else {
+                            notAvail.push(this);
+                        }
+                    });
+
+                    self.options.avail = avail;
+                    self.options.notAvail = notAvail;
+
+                    self.fn.render.days();
+                });
             },
             prevWeek: function () {
                 self.fn.createDateArray(true, -1);
-                self.fn.render.days();
+                self.fn.refreshAvailability().done(function (response) {
+                    var avail = [];
+                    var notAvail = [];
+
+                    $.each(response.Value.Properties[0].Days, function () {
+                        if (this.IsAvailable) {
+                            avail.push(this);
+                        }
+                        else {
+                            notAvail.push(this);
+                        }
+                    });
+
+                    self.options.avail = avail;
+                    self.options.notAvail = notAvail;
+
+                    self.fn.render.days();
+                });
             }
         },
         createDateArray: function (changeWeek, direct) {
@@ -184,9 +253,9 @@ function d21_API(app) {
     var self = this;
 
     self.fn = {
-        get: function () {
+        get: function (begin) {
             var response = $.ajax({
-                url: self.fn.getRequestUrl(),
+                url: self.fn.getRequestUrl(begin),
                 method: 'GET',
                 beforeSend: function (request) {
                     request.setRequestHeader('access_token', 'LItR5Tpx+UCZOJsQEQ66mQ==');
@@ -198,20 +267,39 @@ function d21_API(app) {
 
             return response;
         },
-        getRequestUrl: function () {
-            var begin = moment(app.var.DateArray[0]);
-            var end = moment(app.var.DateArray[0]).add(3, 'days');
+        getRequestUrl: function (begin) {
+            var begin = moment(begin);
+            var end = moment(begin).add(20, 'days');
+            var personString = "";
 
-            var isoBegin = begin.get('year') + "-" + begin.get('month') + "-" + begin.get('date');
-            var isoEnd = end.get('year') + "-" + end.get('month') + "-" + end.get('date');
+            var isoBegin = begin.get('year') + "-" + (begin.get('month') + 1) + "-" + begin.get('date');
+            var isoEnd = end.get('year') + "-" + (end.get('month') + 1) + "-" + end.get('date');
+
+            for (var i = 0; i < app.var.adultCount; i++) {
+                if (i == 0) {
+                    personString += "18";
+                } else {
+                    personString += ",18";
+                }
+            }
+
+            if (app.var.childs.length > 0) {
+                $.each(app.var.childs, function () {
+                    if (i == 0) {
+                        personString += this;
+                    } else {
+                        personString += "," + this;
+                    }
+                });
+            }
 
             var url = "http://v4.api.ibe.dirs21.de/calendar?"
                 + "begin=" + isoBegin
-                + "&end=" + isoBegin
+                + "&end=" + isoEnd
                 + "&channel_id=" + "795"
                 + "&property_id=" + "2170"
-                + "&room=" + "18"
-                + "&los=" + "1";
+                + "&los=" + app.var.los
+                + "&room=" + personString;
 
             return url;
         }
