@@ -6,6 +6,7 @@ function d21_aCalendar(options) {
         lang: "de",
         ibeUrl: "",
         notAvail: [],
+        avail: [],
     }, options);
 
     self.var = {
@@ -30,12 +31,39 @@ function d21_aCalendar(options) {
         FirstDay: 1
     }
 
+    self.api = new d21_API(self);
+
     self.fn = {
         init: function () {
-            moment.locale('de');
+            var avail = [];
+            var notAvail = [];
 
+            moment.locale('de');
             self.fn.createDateArray(false);
-            self.fn.render.calendar();
+
+            self.api.fn.get().done(function (response) {
+                $.each(response.Value.Properties[0].Days, function () {
+                    if (this.IsAvailable) {
+                        avail.push(new Date(this.Date));
+                    }
+                    else {
+                        notAvail.push(new Date(this.Date));
+                    }
+                });
+
+                self.options.avail = avail;
+                self.options.notAvail = notAvail;
+
+                self.fn.render.calendar();
+
+                $('.nextWeek').click(function () {
+                    self.fn.handler.nextWeek();
+                });
+
+                $('.prevWeek').click(function () {
+                    self.fn.handler.prevWeek();
+                });
+            });
         },
         render: {
             calendar: function () {
@@ -80,13 +108,21 @@ function d21_aCalendar(options) {
 
                             if ((currentDate - self.var.DateArray[i]) == 0) {
                                 stateClass = " notAvail";
-                            } else if ((currentDate - self.var.DateArray[i]) < 0) {
+                            }
+                        });
+                    }
+
+                    if (self.options.avail.length > 0) {
+                        $.each(self.options.avail, function () {
+                            var currentDate = moment(this);
+                            currentDate.millisecond(0);
+                            currentDate.second(0);
+                            currentDate.minute(0);
+                            currentDate.hour(0);
+
+                            if ((currentDate - self.var.DateArray[i]) == 0) {
                                 stateClass = " avail";
                                 btBook = "Buchen!";
-                            }
-                            else {
-                                stateClass = "";
-                                btBook = "";
                             }
                         });
                     }
@@ -143,18 +179,52 @@ function d21_aCalendar(options) {
     }
 }
 
+// API object
+function d21_API(app) {
+    var self = this;
+
+    self.fn = {
+        get: function () {
+            var response = $.ajax({
+                url: self.fn.getRequestUrl(),
+                method: 'GET',
+                beforeSend: function (request) {
+                    request.setRequestHeader('access_token', 'LItR5Tpx+UCZOJsQEQ66mQ==');
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    console.error(jqXHR);
+                }
+            });
+
+            return response;
+        },
+        getRequestUrl: function () {
+            var begin = moment(app.var.DateArray[0]);
+            var end = moment(app.var.DateArray[0]).add(3, 'days');
+
+            var isoBegin = begin.get('year') + "-" + begin.get('month') + "-" + begin.get('date');
+            var isoEnd = end.get('year') + "-" + end.get('month') + "-" + end.get('date');
+
+            var url = "http://v4.api.ibe.dirs21.de/calendar?"
+                + "begin=" + isoBegin
+                + "&end=" + isoBegin
+                + "&channel_id=" + "795"
+                + "&property_id=" + "2170"
+                + "&room=" + "18"
+                + "&los=" + "1";
+
+            return url;
+        }
+    }
+}
+
 // On document ready
 $(document).ready(function () {
-    var d21_ac = new d21_aCalendar({
-        notAvail: [moment(new Date()), moment(new Date()).add(1, 'days')]
-    });
+    var d21_api = new d21_aCalendar();
+    var d21_ac;
+    var avail = [];
+    var notAvail = [];
+
+    d21_ac = new d21_aCalendar();
     d21_ac.fn.init();
-
-    $('.nextWeek').click(function () {
-        d21_ac.fn.handler.nextWeek();
-    });
-
-    $('.prevWeek').click(function () {
-        d21_ac.fn.handler.prevWeek();
-    });
 });
